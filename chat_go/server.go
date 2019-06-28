@@ -84,7 +84,7 @@ func HandleConn(conn net.Conn) { //处理用户链接
 				return
 			}
 
-			msg := string(buf[:n-1]) //通过windows nc测试，多一个换行
+			msg := string(buf[:n-2]) //通过windows cmd测试，多一个换行
 			if len(msg) == 3 && msg == "who" {
 				//遍历map，给当前用户发送所有成员
 				conn.Write([]byte("user list:\n"))
@@ -94,9 +94,15 @@ func HandleConn(conn net.Conn) { //处理用户链接
 				}
 
 			} else if len(msg) >= 8 && msg[:6] == "rename" {
+				splits := strings.Split(msg, "|")
+				if len(splits)!=2 {
+					messaage <- MakeMsg(cli, msg)
+					continue
+				}
 				// rename|mike
-				name := strings.Split(msg, "|")[1]
-				cli.Name = name
+				name := splits[1]
+				cli.Name = strings.ReplaceAll(name,"\n","")
+				cli.Name = strings.ReplaceAll(name,"\r","")
 				onlineMap[cliAddr] = cli
 				conn.Write([]byte("rename ok\n"))
 
@@ -120,7 +126,7 @@ func HandleConn(conn net.Conn) { //处理用户链接
 			return
 		case <-hasData:
 
-		case <-time.After(30 * time.Second): //60s后
+		case <-time.After(60 * time.Second): //60s后
 			delete(onlineMap, cliAddr)                     //当前用户从map移除
 			messaage <- MakeMsg(cli, "time out leave out") //广播谁下线了
 			return
